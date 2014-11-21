@@ -7,7 +7,7 @@ module WorkerRoulette
     end
 
     def send(message)
-      queue.timedwrite(message)
+      queue.timedsend(message)
     rescue POSIX::Mqueue::QueueFull
       puts "MessageQueue: queue full"
     end
