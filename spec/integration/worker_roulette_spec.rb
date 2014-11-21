@@ -13,60 +13,60 @@ module WorkerRoulette
     let(:work_orders_with_headers) {default_headers.merge({'payload' => work_orders})}
     let(:jsonized_work_orders_with_headers) {[WorkerRoulette.dump(work_orders_with_headers)]}
     let(:worker_roulette) { WorkerRoulette.start }
-
     let(:redis) {Redis.new(worker_roulette.redis_config)}
 
     before do
       redis.flushall
     end
 
-    it "should exist" do
+    it "exists" do
       expect(worker_roulette).to be_instance_of(WorkerRoulette)
     end
 
     context Foreman do
-      let(:subject) {worker_roulette.foreman(sender)}
+      let(:foreman) {worker_roulette.foreman(sender)}
 
-      it "should be working on behalf of a sender" do
-        expect(subject.sender).to eq(sender)
+      it "works on behalf of a sender" do
+        expect(foreman.sender).to eq(sender)
       end
 
-      it "should enqueue_work_order two work_orders in the sender's work queue" do
-        subject.enqueue_work_order(work_orders.first) {}
-        subject.enqueue_work_order(work_orders.last) {}
+      it "enqueues two work_orders in the sender's work queue" do
+        foreman.enqueue_work_order(work_orders.first) {}
+        foreman.enqueue_work_order(work_orders.last) {}
         expect(redis.lrange(sender, 0, -1)).to eq(work_orders.map {|m| WorkerRoulette.dump(default_headers.merge({'payload' => m})) })
       end
 
-      it "should enqueue_work_order an array of work_orders without headers in the sender's work queue" do
-        subject.enqueue_work_order_without_headers(work_orders)
+      it "enqueues an array of work_orders without headers in the sender's work queue" do
+        foreman.enqueue_work_order_without_headers(work_orders)
         expect(redis.lrange(sender, 0, -1)).to eq([WorkerRoulette.dump(work_orders)])
       end
 
-      it "should enqueue_work_order an array of work_orders with default headers in the sender's work queue" do
-        subject.enqueue_work_order(work_orders)
+      it "enqueues an array of work_orders with default headers in the sender's work queue" do
+        foreman.enqueue_work_order(work_orders)
         expect(redis.lrange(sender, 0, -1)).to eq(jsonized_work_orders_with_headers)
       end
 
-      it "should enqueue_work_order an array of work_orders with additional headers in the sender's work queue" do
+      it "enqueues an array of work_orders with additional headers in the sender's work queue" do
         extra_headers = {'foo' => 'bars'}
-        subject.enqueue_work_order(work_orders, extra_headers)
+        foreman.enqueue_work_order(work_orders, extra_headers)
         work_orders_with_headers['headers'].merge!(extra_headers)
         expect(redis.lrange(sender, 0, -1)).to eq([WorkerRoulette.dump(work_orders_with_headers)])
       end
 
-      it "should post the sender's id to the job board with an order number" do
-        subject.enqueue_work_order(work_orders.first)
+      it "posts the sender's id to the job board with an order number" do
+        foreman.enqueue_work_order(work_orders.first)
         worker_roulette.foreman('other_forman').enqueue_work_order(work_orders.last)
-        expect(redis.zrange(subject.job_board_key, 0, -1, with_scores: true)).to eq([[sender, 1.0], ["other_forman", 2.0]])
+        expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([[sender, 1.0], ["other_forman", 2.0]])
       end
 
-      it "should generate a monotically increasing score for senders not on the job board, but not for senders already there" do
-        other_forman = worker_roulette.foreman('other_forman')
-        expect(redis.get(subject.counter_key)).to be_nil
-        subject.enqueue_work_order(work_orders.first)
-        expect(redis.get(subject.counter_key)).to eq("1")
-        subject.enqueue_work_order(work_orders.last)
-        expect(redis.get(subject.counter_key)).to eq("1")
+      it "counter_key increases by one only for first introduction of foreman to job board" do
+        let(:other_forman) { worker_roulette.foreman('other_forman') }
+
+        expect(redis.get(foreman.counter_key)).to be_nil
+        foreman.enqueue_work_order(work_orders.first)
+        expect(redis.get(foreman.counter_key)).to eq("1")
+        foreman.enqueue_work_order(work_orders.last)
+        expect(redis.get(foreman.counter_key)).to eq("1")
         other_forman.enqueue_work_order(work_orders.last)
         expect(redis.get(other_forman.counter_key)).to eq("2")
       end
@@ -74,7 +74,7 @@ module WorkerRoulette
 
     context Tradesman do
       let(:foreman)        { worker_roulette.foreman(sender) }
-      subject(:tradesman)  { worker_roulette.tradesman }
+      let(:tradesman)  { worker_roulette.tradesman }
 
       before do
         foreman.enqueue_work_order(work_orders)
@@ -97,31 +97,31 @@ module WorkerRoulette
         end
       end
 
-      it "should have a last sender if it found messages" do
+      it "has a last sender if it found messages" do
         expect(tradesman.work_orders!.length).to eq(1)
         expect(tradesman.last_sender).to eq(sender)
       end
 
-      it "should not have a last sender if it found no messages" do
+      it "does not have a last sender if it found no messages" do
         expect(tradesman.work_orders!.length).to eq(1)
         expect(tradesman.work_orders!.length).to eq(0)
         expect(tradesman.last_sender).to be_nil
       end
 
-      it "should drain one set of work_orders from the sender's work queue" do
+      it "drains one set of work_orders from the sender's work queue" do
         expect(tradesman.work_orders!).to eq([work_orders_with_headers])
         expect(tradesman.work_orders!).to be_empty
         expect(tradesman.work_orders!).to be_empty #does not throw an error if queue is already empty
       end
 
-      it "should drain all the work_orders from the sender's work queue" do
+      it "drains all the work_orders from the sender's work queue" do
         foreman.enqueue_work_order(work_orders)
         expect(tradesman.work_orders!).to eq([work_orders_with_headers, work_orders_with_headers])
         expect(tradesman.work_orders!).to be_empty
         expect(tradesman.work_orders!).to be_empty #does not throw an error if queue is already empty
       end
 
-      it "should take the oldest sender off the job board (FIFO)" do
+      it "takes the oldest sender off the job board (FIFO)" do
         oldest_sender = sender.to_s
         most_recent_sender = 'most_recent_sender'
         most_recent_foreman = worker_roulette.foreman(most_recent_sender)
@@ -131,7 +131,7 @@ module WorkerRoulette
         expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([most_recent_sender])
       end
 
-      it "should get the work_orders from the next queue when a new job is ready, then poll for new work" do
+      it "gets the work_orders from the next queue when a new job is ready, then poll for new work" do
         tradesman.wait_for_work_orders do |redis_work_orders|
           expect(redis_work_orders).to eq([work_orders_with_headers])
           expect(tradesman.last_sender).to eq('katie_80')
@@ -139,7 +139,7 @@ module WorkerRoulette
         end
       end
 
-      it "should publish and subscribe on custom channels" do
+      it "publishes and subscribes on custom channels" do
         tradesman         = worker_roulette.tradesman('good_channel')
         expect(tradesman).to receive(:work_orders!).and_call_original
 
@@ -177,12 +177,8 @@ module WorkerRoulette
 
       end
 
-      context "Failure" do
-        it "should not put the sender_id and work_orders back if processing fails bc new work_orders may have been processed while that process failed" do; end
-      end
-
       context "Concurrent Access" do
-        it "should pool its connections" do
+        it "pools its connections" do
           Array.new(100) do
             Thread.new {worker_roulette.tradesman_connection_pool.with {|pooled_redis| pooled_redis.get("foo")}}
           end.each(&:join)
