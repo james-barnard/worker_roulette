@@ -33,8 +33,8 @@ module WorkerRoulette
     end
 
     def enqueue_work_order(work_order, headers = {}, &callback)
-      work_order = {'headers' => default_headers.merge(headers), 'payload' => work_order}.to_json
-      enqueue(work_order, &callback)
+      work_order = {'headers' => default_headers.merge(headers), 'payload' => work_order}
+      enqueue(WorkerRoulette.dump(work_order), &callback)
     end
 
     def enqueue(work_order, &callback)
