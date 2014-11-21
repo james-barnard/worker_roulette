@@ -30,30 +30,30 @@ module WorkerRoulette
         expect(foreman.sender).to eq(sender)
       end
 
-      it "enqueues two work_orders in the sender's work queue" do
+      xit "enqueues two work_orders in the sender's work queue" do
         foreman.enqueue_work_order(work_orders.first) {}
         foreman.enqueue_work_order(work_orders.last) {}
         expect(redis.lrange(sender, 0, -1)).to eq(work_orders.map {|m| WorkerRoulette.dump(default_headers.merge({'payload' => m})) })
       end
 
-      it "enqueues an array of work_orders without headers in the sender's work queue" do
+      xit "enqueues an array of work_orders without headers in the sender's work queue" do
         foreman.enqueue_work_order_without_headers(work_orders)
         expect(redis.lrange(sender, 0, -1)).to eq([WorkerRoulette.dump(work_orders)])
       end
 
-      it "enqueues an array of work_orders with default headers in the sender's work queue" do
+      xit "enqueues an array of work_orders with default headers in the sender's work queue" do
         foreman.enqueue_work_order(work_orders)
         expect(redis.lrange(sender, 0, -1)).to eq(jsonized_work_orders_with_headers)
       end
 
-      it "enqueues an array of work_orders with additional headers in the sender's work queue" do
+      xit "enqueues an array of work_orders with additional headers in the sender's work queue" do
         extra_headers = {'foo' => 'bars'}
         foreman.enqueue_work_order(work_orders, extra_headers)
         work_orders_with_headers['headers'].merge!(extra_headers)
         expect(redis.lrange(sender, 0, -1)).to eq([WorkerRoulette.dump(work_orders_with_headers)])
       end
 
-      it "posts the sender's id to the job board with an order number" do
+      xit "posts the sender's id to the job board with an order number" do
         foreman.enqueue_work_order(work_orders.first)
         worker_roulette.foreman('other_forman').enqueue_work_order(work_orders.last)
         expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([[sender, 1.0], ["other_forman", 2.0]])
