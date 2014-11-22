@@ -31,7 +31,7 @@ module WorkerRoulette
 
           -- return if job_board is empty
           if sender_key == empty_string then
-            return {empty_string, {}, 0}
+            return {empty_string, 0}
           end
         end
 
