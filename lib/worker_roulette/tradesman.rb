@@ -128,6 +128,7 @@ module WorkerRoulette
     end
 
     def fetch_work_from_queue(sender_key)
+      return [] unless sender_key
       message_queue = MessageQueue.new(sender_key)
       work = message_queue.drain
       work
