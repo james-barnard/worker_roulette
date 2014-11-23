@@ -73,8 +73,8 @@ module WorkerRoulette
     end
 
     context Tradesman do
-      let(:foreman)        { worker_roulette.foreman(sender) }
-      let(:tradesman)  { worker_roulette.tradesman }
+      let(:foreman)   { worker_roulette.foreman(sender) }
+      let(:tradesman) { worker_roulette.tradesman }
 
       before do
         foreman.enqueue_work_order(work_orders)

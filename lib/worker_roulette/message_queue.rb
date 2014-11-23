@@ -2,12 +2,13 @@ require 'posix/mqueue'
 
 module WorkerRoulette
   class MessageQueue
-    def initialize(sender_key)
-      @queue_name = "/#{sender_key}"
+    def initialize(sender_key=nil)
+      @sender_key = sender_key
     end
 
-    def send(message)
+    def send(message, &block)
       queue.timedsend(message)
+      block.call(@sender_key) if block
     rescue POSIX::Mqueue::QueueFull
       puts "MessageQueue: queue full"
     end
@@ -38,7 +39,7 @@ module WorkerRoulette
     private
 
     def queue
-      @queue ||= POSIX::Mqueue.new(@queue_name)
+      @queue ||= POSIX::Mqueue.new("/#{@sender_key}")
     end
 
   end
