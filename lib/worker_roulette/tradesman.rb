@@ -112,7 +112,11 @@ module WorkerRoulette
       return unless on_message_callback
       work_orders! do |work|
         on_message_callback.call(work) if work.any?
-        repeat!(&on_message_callback)
+        if @evented
+          repeat_evented!(&on_message_callback)
+        else
+          repeat_non_evented!(&on_message_callback)
+        end
       end
     end
 
@@ -164,7 +168,16 @@ module WorkerRoulette
 
     private
 
-    def repeat!(&on_message_callback)
+    def repeat_non_evented!(&on_message_callback)
+      if remaining_jobs > 0
+        wait_for_work_orders(&on_message_callback)
+      else
+        sleep 2
+        wait_for_work_orders(&on_message_callback)
+      end
+    end
+
+    def repeat_evented!(&on_message_callback)
       if remaining_jobs > 0
         EM.next_tick {wait_for_work_orders(&on_message_callback)}
       else
