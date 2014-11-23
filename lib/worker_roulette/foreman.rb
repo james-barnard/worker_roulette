@@ -44,7 +44,7 @@ module WorkerRoulette
     end
 
     def add_to_job_board(sender_id)
-      @lua.call(LUA_ENQUEUE_WORK_ORDER, [counter_key, job_board_key, sender_key], &callback)
+      @lua.call(LUA_ENQUEUE_WORK_ORDER, [counter_key, job_board_key, sender_key])
     end
 
     def job_board_key

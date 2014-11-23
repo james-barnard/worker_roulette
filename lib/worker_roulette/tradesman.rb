@@ -122,6 +122,7 @@ module WorkerRoulette
         @remaining_jobs = results[1]
         @last_sender    = sender_key.split(':').last
         work            = fetch_work_from_queue(@last_sender)
+        work = work.map { |work_order| WorkerRoulette.load(work_order) }
         callback.call work if callback
         work
       end

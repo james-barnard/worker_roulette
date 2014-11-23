@@ -25,6 +25,7 @@ module WorkerRoulette
 
     context Foreman do
       let(:foreman) {worker_roulette.foreman(sender)}
+      let(:other_forman) { worker_roulette.foreman('other_forman') }
 
       it "works on behalf of a sender" do
         expect(foreman.sender).to eq(sender)
@@ -60,8 +61,6 @@ module WorkerRoulette
       end
 
       it "counter_key increases by one only for first introduction of foreman to job board" do
-        let(:other_forman) { worker_roulette.foreman('other_forman') }
-
         expect(redis.get(foreman.counter_key)).to be_nil
         foreman.enqueue_work_order(work_orders.first)
         expect(redis.get(foreman.counter_key)).to eq("1")
