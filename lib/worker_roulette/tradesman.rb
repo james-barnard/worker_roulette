@@ -102,8 +102,7 @@ module WorkerRoulette
       @evented        = evented
       @polling_time   = polling_time
       @redis_pool     = redis_pool
-      @namespace      = namespace
-      @channel        = namespace || WorkerRoulette::JOB_NOTIFICATIONS
+      @namespace      = namespace || WorkerRoulette::JOB_NOTIFICATIONS
       @lua            = Lua.new(@redis_pool)
       @remaining_jobs = 0
     end
@@ -125,7 +124,7 @@ module WorkerRoulette
         sender_key      = results[0]
         @remaining_jobs = results[1]
         @last_sender    = sender_key.split(':').last
-        work            = fetch_work_from_queue(@last_sender)
+        work            = fetch_work_from_queue(sender_key)
         work = work.map { |work_order| WorkerRoulette.load(work_order) }
         callback.call work if callback
         work
