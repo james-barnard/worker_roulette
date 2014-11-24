@@ -123,16 +123,17 @@ module WorkerRoulette
       @lua.call(LUA_DRAIN_WORK_ORDERS, [job_board_key, @last_sender], [nil]) do |results|
         sender_key      = results[0]
         @remaining_jobs = results[1]
-        @last_sender    = sender_key.split(':').last
+        @last_sender    = sender_key
+        puts "lua returned sender: (#{sender_key})"
         work            = fetch_work_from_queue(sender_key)
         work = work.map { |work_order| WorkerRoulette.load(work_order) }
-        callback.call work if callback
+        callback.call work if work.any? && callback
         work
       end
     end
 
     def fetch_work_from_queue(sender_key)
-      return [] unless sender_key
+      return [] if sender_key.to_s == ""
       message_queue = MessageQueue.new(sender_key)
       work = message_queue.drain
       work

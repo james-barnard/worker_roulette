@@ -3,7 +3,7 @@ require 'posix/mqueue'
 module WorkerRoulette
   class MessageQueue
     def initialize(sender_key=nil)
-      fail "MessageQueue: sender_key is required" unless sender_key
+      fail "MessageQueue: sender_key is required" if sender_key.to_s == ""
       @sender_key = sender_key
     end
 
