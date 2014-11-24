@@ -104,7 +104,7 @@ module WorkerRoulette
 
       it "has a last sender if it found messages" do
         expect(tradesman.work_orders!.length).to eq(1)
-        expect(tradesman.last_sender).to eq(sender)
+        expect(tradesman.last_sender).to eq(sender_key)
       end
 
       it "does not have a last sender if it found no messages" do
