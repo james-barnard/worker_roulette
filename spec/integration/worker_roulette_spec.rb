@@ -17,6 +17,7 @@ module WorkerRoulette
 
     before do
       redis.flushall
+      worker_roulette.tradesman.drain
     end
 
     it "exists" do
@@ -76,6 +77,7 @@ module WorkerRoulette
       let(:tradesman) { worker_roulette.tradesman }
 
       before do
+        tradesman.wait_for_work_orders
         foreman.enqueue_work_order(work_orders)
       end
 
