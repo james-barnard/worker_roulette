@@ -39,11 +39,11 @@ module WorkerRoulette
 
     def enqueue(work_order, &callback)
       MessageQueue.new(sender_key).send(work_order) do
-        add_to_job_board(sender_key)
+        add_to_job_board
       end
     end
 
-    def add_to_job_board(sender_id)
+    def add_to_job_board
       @lua.call(LUA_ENQUEUE_WORK_ORDER, [counter_key, job_board_key, sender_key])
     end
 
