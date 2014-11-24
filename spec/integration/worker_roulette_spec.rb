@@ -5,7 +5,8 @@ module WorkerRoulette
   end
 
   describe WorkerRoulette do
-    let(:sender) {'katie_80'}
+    let(:sender) {"katie_80"}
+    let(:sender_key) {"new_job_ready:#{sender}"}
     let(:work_orders) {["hello", "foreman"]}
     let(:default_headers) {Hash['headers' => {'sender' => sender}]}
     let(:hello_work_order) {Hash['payload' => "hello"]}
@@ -17,7 +18,7 @@ module WorkerRoulette
 
     before do
       redis.flushall
-      worker_roulette.tradesman.drain
+      MessageQueue.new(sender_key).drain
     end
 
     it "exists" do
@@ -77,7 +78,7 @@ module WorkerRoulette
       let(:tradesman) { worker_roulette.tradesman }
 
       before do
-        tradesman.wait_for_work_orders
+        MessageQueue.new(sender_key).drain
         foreman.enqueue_work_order(work_orders)
       end
 
