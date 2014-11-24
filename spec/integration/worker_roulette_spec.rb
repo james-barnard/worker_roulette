@@ -141,19 +141,19 @@ module WorkerRoulette
         end
       end
 
-      it "publishes and subscribes on custom channels" do
-        tradesman         = worker_roulette.tradesman('good_channel')
+      it "publishes and subscribes in separate namespaces" do
+        tradesman         = worker_roulette.tradesman('good_namespace')
         expect(tradesman).to receive(:work_orders!).and_call_original
 
-        good_foreman      = worker_roulette.foreman('foreman', 'good_channel')
-        bad_foreman       = worker_roulette.foreman('foreman', 'bad_channel')
+        good_foreman      = worker_roulette.foreman('foreman', 'good_namespace')
+        bad_foreman       = worker_roulette.foreman('foreman', 'bad_namespace')
 
-        good_foreman.enqueue_work_order('some old fashion work')
-        bad_foreman.enqueue_work_order('evil biddings you should not carry out')
+        good_foreman.enqueue_work_order('old fashion work')
+        bad_foreman.enqueue_work_order('evil biddings')
 
         tradesman.wait_for_work_orders do |work|
-          expect(work.to_s).to match("some old fashion work")
-          expect(work.to_s).not_to match("evil")
+          expect(work.to_s).to match("old fashion work")
+          expect(work.to_s).not_to match("evil biddings")
           expect(tradesman.last_sender).to eq('foreman')
           allow(tradesman).to receive(:wait_for_work_orders)
         end
