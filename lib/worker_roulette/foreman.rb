@@ -15,7 +15,7 @@ module WorkerRoulette
 
         -- add sender_id to fifo job_board if not already there
         if (redis_call(zscore, job_board_key, sender_key) == false) then
-          local count     = redis_call(incr, counter_key)
+          local count = redis_call(incr, counter_key)
           redis_call(zadd, job_board_key, count, sender_key)
         end
       end
@@ -27,13 +27,13 @@ module WorkerRoulette
 
     def initialize(redis_pool, sender, namespace = nil)
       @sender     = sender
-      @namespace  = namespace
       @redis_pool = redis_pool
+      @namespace  = namespace || WorkerRoulette::JOB_NOTIFICATIONS
       @lua        = Lua.new(@redis_pool)
     end
 
-    def enqueue_work_order(work_order, headers = {}, &callback)
-      work_order = {'headers' => default_headers.merge(headers), 'payload' => work_order}
+    def enqueue_work_order(work_order, header = {}, &callback)
+      work_order = {'headers' => default_header.merge(header), 'payload' => work_order}
       enqueue(WorkerRoulette.dump(work_order), &callback)
     end
 
@@ -61,8 +61,9 @@ module WorkerRoulette
 
     private
 
-    def default_headers
-      Hash['sender' => sender]
+    def default_header
+      { 'sender' => sender }
     end
+
   end
 end
