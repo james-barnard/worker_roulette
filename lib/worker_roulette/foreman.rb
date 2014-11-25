@@ -38,7 +38,7 @@ module WorkerRoulette
     end
 
     def enqueue(work_order, &callback)
-      MessageQueue.new(sender_key).send(work_order) do
+      NexiaMessageQueue.new(sender_key).send(work_order) do
         add_to_job_board
       end
     end

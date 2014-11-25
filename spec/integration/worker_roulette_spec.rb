@@ -18,7 +18,7 @@ module WorkerRoulette
 
     before do
       redis.flushall
-      MessageQueue.new(sender_key).drain
+      NexiaMessageQueue.new(sender_key).drain
     end
 
     it "exists" do
@@ -78,7 +78,7 @@ module WorkerRoulette
       let(:tradesman) { worker_roulette.tradesman }
 
       before do
-        MessageQueue.new(sender_key).drain
+        NexiaMessageQueue.new(sender_key).drain
         foreman.enqueue_work_order(work_orders)
       end
 

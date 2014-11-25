@@ -134,7 +134,7 @@ module WorkerRoulette
 
     def fetch_work_from_queue(sender_key)
       return [] if sender_key.to_s == ""
-      message_queue = MessageQueue.new(sender_key)
+      message_queue = NexiaMessageQueue.new(sender_key)
       work = message_queue.drain
       work
     end

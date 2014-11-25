@@ -1,8 +1,9 @@
 require 'posix/mqueue'
 
 module WorkerRoulette
-  class MessageQueue
+  class NexiaMessageQueue
     def initialize(sender_key=nil)
+      puts "MessageQueue:sender_key: (#{sender_key})"
       fail "MessageQueue: sender_key is required" if sender_key.to_s == ""
       @sender_key = sender_key
     end
@@ -40,7 +41,7 @@ module WorkerRoulette
     private
 
     def queue
-      @queue ||= POSIX::Mqueue.new("/#{@sender_key}", msgsize: 256, maxmsg: 4096)
+      @queue ||= POSIX::Mqueue.new("/#{@sender_key}", msgsize: 10, maxmsg: 4096)
     end
 
   end
