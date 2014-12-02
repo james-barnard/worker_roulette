@@ -37,6 +37,7 @@ module WorkerRoulette
           done
           end
         end
+        foreman.shutdown
       end
 
       it "calls the block given when enqueue_work_order succeeds" do
@@ -46,19 +47,19 @@ module WorkerRoulette
           called = true
         done(0.1) { expect(called).to be_truthy }
         end
-        
-      NexiaMessageQueue.new("new_job_ready:foreman").drain
 
+        foreman.shutdown
       end
 
-      xit "enqueues an array of work_orders without headers in the sender's slot in the job board" do
+      it "enqueues an array of work_orders without headers in the sender's slot in the job board" do
         foreman.enqueue_work_order_without_headers(work_orders) do
           tradesman.work_orders! do |work|
-            expect(work).to eq([WorkerRoulette.dump(work_orders)])
+            expect(work).to eq([work_orders])
           done
           end
 
         end
+        foreman.shutdown
       end
 
       context "with additional headers" do
@@ -73,6 +74,7 @@ module WorkerRoulette
 
           end
         end
+        foreman.shutdown
       end
 
       it "posts the sender's id to the job board with an order number" do
@@ -87,6 +89,8 @@ module WorkerRoulette
             end
           end
         end
+        other_foreman.shutdown
+        foreman.shutdown
       end
 
       it "counter_key increases by one only for first introduction of foreman to job board" do
@@ -104,6 +108,8 @@ module WorkerRoulette
             end
           end
         end
+        other_foreman.shutdown
+        foreman.shutdown
       end
     end
 
@@ -118,6 +124,7 @@ module WorkerRoulette
             done
           end
         end
+        foreman.shutdown
       end
 
       it "removes the lock from the last_sender's queue" do
@@ -141,6 +148,8 @@ module WorkerRoulette
             end
           end
         end
+        foreman.shutdown
+        recent_foreman.shutdown
       end
 
       it "drains one set of work_orders from the sender's slot in the job board" do
@@ -153,6 +162,7 @@ module WorkerRoulette
             end
           end
         end
+        foreman.shutdown
       end
 
       it "takes the oldest sender off the job board (FIFO)" do
@@ -165,6 +175,8 @@ module WorkerRoulette
             tradesman.work_orders! { expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{recent_sender}"]); done }
           end
         end
+        foreman.shutdown
+        recent_foreman.shutdown
       end
 
       it "gets the work_orders from the next queue when a new job is ready" do
@@ -183,6 +195,7 @@ module WorkerRoulette
             done(0.1)
           end
         end
+        foreman.shutdown
       end
 
       it "publishes and subscribes on custom channels" do
@@ -218,6 +231,8 @@ module WorkerRoulette
 
           end
         end
+        good_foreman.shutdown
+        bad_foreman.shutdown
       end
 
       it "pulls off work orders for more than one sender" do
@@ -243,6 +258,8 @@ module WorkerRoulette
 
         done(0.2) {expect(got_good && got_lazy).to eq(true)}
       end
+      good_foreman.shutdown
+      lazy_foreman.shutdown
     end
 
   end

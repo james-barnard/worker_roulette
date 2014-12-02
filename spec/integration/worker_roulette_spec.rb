@@ -71,6 +71,9 @@ module WorkerRoulette
         expect(redis.get(foreman.counter_key)).to eq("1")
         other_forman.enqueue_work_order(work_orders.last)
         expect(redis.get(other_forman.counter_key)).to eq("2")
+
+        foreman.shutdown
+        other_foreman.shutdown
       end
     end
 
@@ -81,6 +84,10 @@ module WorkerRoulette
       before do
         NexiaMessageQueue.new(sender_key).drain
         foreman.enqueue_work_order(work_orders)
+      end
+
+      after do
+        foreman.shutdown
       end
 
       context 'removing locks from queues' do
@@ -101,6 +108,7 @@ module WorkerRoulette
           tradesman.work_orders!
           expect(redis.keys("L*:*").length).to eq(0)
         end
+        most_recent_foreman.shutdown
       end
 
       it "has a last sender if it found messages" do
@@ -135,6 +143,7 @@ module WorkerRoulette
         expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([oldest_sender, most_recent_sender])
         tradesman.work_orders!
         expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([most_recent_sender])
+        most_recent_foreman.shutdown
       end
 
       it "gets the work_orders from the next queue when a new job is ready, then poll for new work" do
@@ -161,6 +170,8 @@ module WorkerRoulette
           expect(tradesman.last_sender).to eq('good_namespace:foreman')
           allow(tradesman).to receive(:work_orders!)
         end
+        good_foreman.shutdown
+        bad_foreman.shutdown
       end
 
       xit "goes back to the channel to get more work for the same sender" do

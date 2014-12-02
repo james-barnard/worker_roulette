@@ -23,13 +23,14 @@ module WorkerRoulette
       enqueue_work_order()
     HERE
 
-    attr_reader :sender, :namespace
+    attr_reader :sender, :namespace, :queue
 
     def initialize(redis_pool, sender, namespace = nil)
       @sender     = sender
       @redis_pool = redis_pool
       @namespace  = namespace || WorkerRoulette::JOB_NOTIFICATIONS
       @lua        = Lua.new(@redis_pool)
+      @queue      = NexiaMessageQueue.new(sender_key)
     end
 
     def enqueue_work_order(work_order, header = {}, &callback)
@@ -38,7 +39,7 @@ module WorkerRoulette
     end
 
     def enqueue(work_order, &callback)
-      NexiaMessageQueue.new(sender_key).send(work_order) do
+      queue.send(work_order) do
         add_to_job_board(&callback)
       end
     end
@@ -57,6 +58,11 @@ module WorkerRoulette
 
     def sender_key
       @sender_key ||= WorkerRoulette.sender_key(sender, namespace)
+    end
+
+    # TODO make conman call this upon connection close
+    def shutdown
+      queue.close
     end
 
     private
