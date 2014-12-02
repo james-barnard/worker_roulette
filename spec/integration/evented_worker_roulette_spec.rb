@@ -52,7 +52,7 @@ module WorkerRoulette
       end
 
       it "enqueues an array of work_orders without headers in the sender's slot in the job board" do
-        foreman.enqueue_work_order_without_headers(work_orders) do
+        foreman.enqueue(WorkerRoulette.dump(work_orders)) do
           tradesman.work_orders! do |work|
             expect(work).to eq([work_orders])
           done { foreman.shutdown }
@@ -72,6 +72,7 @@ module WorkerRoulette
             end
 
           end
+          foreman.shutdown
         end
       end
 
@@ -159,10 +160,11 @@ module WorkerRoulette
       end
 
       it "takes the oldest sender off the job board (FIFO)" do
+        oldest_sender = sender
+        recent_sender = 'recent_sender'
+        recent_foreman = worker_roulette.foreman(recent_sender)
+
         foreman.enqueue_work_order(work_orders) do
-          oldest_sender = sender
-          recent_sender = 'recent_sender'
-          recent_foreman = worker_roulette.foreman(recent_sender)
           recent_foreman.enqueue_work_order(work_orders) do
             expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{oldest_sender}", "new_job_ready:#{recent_sender}"])
             tradesman.work_orders! do
