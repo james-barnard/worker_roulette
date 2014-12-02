@@ -34,10 +34,9 @@ module WorkerRoulette
         foreman.enqueue_work_order(work_orders) do
           tradesman.work_orders! do |work|
             expect(work).to eq([work_orders_with_headers])
-          done
+          done { foreman.shutdown }
           end
         end
-        foreman.shutdown
       end
 
       it "calls the block given when enqueue_work_order succeeds" do
@@ -45,21 +44,21 @@ module WorkerRoulette
         foreman = worker_roulette.foreman('foreman')
         foreman.enqueue_work_order('some old fashion work') do |redis_response, stuff|
           called = true
-        done(0.1) { expect(called).to be_truthy }
+          done(0.1) do
+            expect(called).to be_truthy
+            foreman.shutdown
+          end
         end
-
-        foreman.shutdown
       end
 
       it "enqueues an array of work_orders without headers in the sender's slot in the job board" do
         foreman.enqueue_work_order_without_headers(work_orders) do
           tradesman.work_orders! do |work|
             expect(work).to eq([work_orders])
-          done
+          done { foreman.shutdown }
           end
 
         end
-        foreman.shutdown
       end
 
       context "with additional headers" do
@@ -69,12 +68,11 @@ module WorkerRoulette
           foreman.enqueue_work_order(work_orders, extra_headers) do
             tradesman.work_orders! do |work|
               expect(work).to eq([work_orders_with_headers])
-            done
+            done { foreman.shutdown }
             end
 
           end
         end
-        foreman.shutdown
       end
 
       it "posts the sender's id to the job board with an order number" do
@@ -85,12 +83,10 @@ module WorkerRoulette
             foreman.enqueue_work_order(work_orders.last) do
               expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([["new_job_ready:other_foreman", 1.0], ["new_job_ready:#{sender}", 2.0]])
 
-              done
+              done { foreman.shutdown; other_foreman.shutdown }
             end
           end
         end
-        other_foreman.shutdown
-        foreman.shutdown
       end
 
       it "counter_key increases by one only for first introduction of foreman to job board" do
@@ -104,12 +100,10 @@ module WorkerRoulette
             expect(redis.get(foreman.counter_key)).to eq("1")
             foreman.enqueue_work_order(work_orders.first) do
               expect(redis.get(foreman.counter_key)).to eq("2")
-              done
+              done { foreman.shutdown; other_foreman.shutdown }
             end
           end
         end
-        other_foreman.shutdown
-        foreman.shutdown
       end
     end
 
@@ -121,10 +115,9 @@ module WorkerRoulette
         foreman.enqueue_work_order(work_orders) do
           tradesman.work_orders! do |r|
             expect(tradesman.last_sender).to eq("new_job_ready:#{sender}")
-            done
+            done { foreman.shutdown }
           end
         end
-        foreman.shutdown
       end
 
       it "removes the lock from the last_sender's queue" do
@@ -143,13 +136,13 @@ module WorkerRoulette
                 tradesman.work_orders!
                 done(0.2) do
                   expect(redis.keys("L*:*").length).to eq(0)
+                  foreman.shutdown
+                  recent_foreman.shutdown
                 end
               end
             end
           end
         end
-        foreman.shutdown
-        recent_foreman.shutdown
       end
 
       it "drains one set of work_orders from the sender's slot in the job board" do
@@ -172,11 +165,15 @@ module WorkerRoulette
           recent_foreman = worker_roulette.foreman(recent_sender)
           recent_foreman.enqueue_work_order(work_orders) do
             expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{oldest_sender}", "new_job_ready:#{recent_sender}"])
-            tradesman.work_orders! { expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{recent_sender}"]); done }
+            tradesman.work_orders! do
+              expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{recent_sender}"])
+              done do
+                foreman.shutdown
+                recent_foreman.shutdown
+              end
+            end
           end
         end
-        foreman.shutdown
-        recent_foreman.shutdown
       end
 
       it "gets the work_orders from the next queue when a new job is ready" do
@@ -192,10 +189,9 @@ module WorkerRoulette
           tradesman.wait_for_work_orders do |redis_work_orders|
             expect(redis_work_orders).to eq([work_orders_with_headers])
             expect(tradesman.last_sender).to match(/new_job_ready:katie_80/)
-            done(0.1)
+            done(0.1) { foreman.shutdown }
           end
         end
-        foreman.shutdown
       end
 
       it "publishes and subscribes on custom channels" do
@@ -227,12 +223,12 @@ module WorkerRoulette
               expect(bad_work.to_s).not_to match("old fashion")
               expect(bad_work.to_s).to match("evil")
             end
-            done(0.1)
-
+            done(0.1) do
+              good_foreman.shutdown
+              bad_foreman.shutdown
+            end
           end
         end
-        good_foreman.shutdown
-        bad_foreman.shutdown
       end
 
       it "pulls off work orders for more than one sender" do
@@ -256,10 +252,12 @@ module WorkerRoulette
           end
         end
 
-        done(0.2) {expect(got_good && got_lazy).to eq(true)}
+        done(0.2) do
+          expect(got_good && got_lazy).to eq(true)
+          good_foreman.shutdown
+          lazy_foreman.shutdown
+        end
       end
-      good_foreman.shutdown
-      lazy_foreman.shutdown
     end
 
   end
