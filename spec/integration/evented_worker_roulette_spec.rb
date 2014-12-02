@@ -15,7 +15,7 @@ module WorkerRoulette
 
     before do
       redis.flushall
-      NexiaMessageQueue.new(sender_key).drain
+      NexiaMessageQueue.new("new_job_ready:katie_80").drain
       NexiaMessageQueue.new("new_job_ready:foreman").drain
     end
 
@@ -105,7 +105,7 @@ module WorkerRoulette
       it "works on behalf of a sender" do
         foreman.enqueue_work_order(work_orders) do
           tradesman.work_orders! do |r|
-            expect(tradesman.last_sender).to eq(sender)
+            expect(tradesman.last_sender).to eq("new_job_ready:#{sender}")
             done
           end
         end
@@ -119,11 +119,11 @@ module WorkerRoulette
           recent_foreman.enqueue_work_order(work_orders) do
             expect(redis.keys("L*:*").length).to eq(0)
             tradesman.work_orders! do
-              expect(redis.get("L*:#{sender}")).to eq("1")
+              expect(redis.get("L*:new_job_ready:#{sender}")).to eq("1")
               expect(redis.keys("L*:*").length).to eq(1)
               tradesman.work_orders! do
                 expect(redis.keys("L*:*").length).to eq(1)
-                expect(redis.get("L*:recent_sender")).to eq("1")
+                expect(redis.get("L*:new_job_ready:recent_sender")).to eq("1")
                 tradesman.work_orders!
                 done(0.2) do
                   expect(redis.keys("L*:*").length).to eq(0)
@@ -147,12 +147,12 @@ module WorkerRoulette
 
       it "takes the oldest sender off the job board (FIFO)" do
         foreman.enqueue_work_order(work_orders) do
-          oldest_sender = sender.to_s
+          oldest_sender = sender
           recent_sender = 'recent_sender'
           recent_foreman = worker_roulette.foreman(recent_sender)
           recent_foreman.enqueue_work_order(work_orders) do
-            expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([oldest_sender, recent_sender])
-            tradesman.work_orders! { expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([recent_sender]); done }
+            expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{oldest_sender}", "new_job_ready:#{recent_sender}"])
+            tradesman.work_orders! { expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq(["new_job_ready:#{recent_sender}"]); done }
           end
         end
       end
@@ -169,7 +169,7 @@ module WorkerRoulette
         foreman.enqueue_work_order(work_orders) do
           tradesman.wait_for_work_orders do |redis_work_orders|
             expect(redis_work_orders).to eq([work_orders_with_headers])
-            expect(tradesman.last_sender).to match(/katie_80/)
+            expect(tradesman.last_sender).to match(/new_job_ready:katie_80/)
             done(0.1)
           end
         end
