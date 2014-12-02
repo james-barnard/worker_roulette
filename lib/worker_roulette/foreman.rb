@@ -39,12 +39,12 @@ module WorkerRoulette
 
     def enqueue(work_order, &callback)
       NexiaMessageQueue.new(sender_key).send(work_order) do
-        add_to_job_board
+        add_to_job_board(&callback)
       end
     end
 
-    def add_to_job_board
-      @lua.call(LUA_ENQUEUE_WORK_ORDER, [counter_key, job_board_key, sender_key])
+    def add_to_job_board(&callback)
+      @lua.call(LUA_ENQUEUE_WORK_ORDER, [counter_key, job_board_key, sender_key], &callback)
     end
 
     def job_board_key
