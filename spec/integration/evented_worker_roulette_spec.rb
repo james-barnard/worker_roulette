@@ -13,6 +13,12 @@ module WorkerRoulette
     let(:worker_roulette) {  WorkerRoulette.start(evented: true)  }
     let(:redis) { Redis.new(worker_roulette.redis_config) }
 
+    before do
+      redis.flushall
+      NexiaMessageQueue.new(sender_key).drain
+      NexiaMessageQueue.new("new_job_ready:foreman").drain
+    end
+
     context "Evented Foreman" do
       subject(:foreman) { worker_roulette.foreman(sender) }
       let(:tradesman)   { worker_roulette.tradesman(nil, 0.01) }
@@ -48,7 +54,7 @@ module WorkerRoulette
       end
 
       it "enqueues an array of work_orders with additional headers in the sender's slot in the job board" do
-        let(:extra_headers) { {'foo' => 'bars'} }
+        extra_headers = {'foo' => 'bars'}
         work_orders_with_headers['headers'].merge!(extra_headers)
 
         foreman.enqueue_work_order(work_orders, extra_headers) do
@@ -61,7 +67,7 @@ module WorkerRoulette
       end
 
       it "posts the sender's id to the job board with an order number" do
-        let(:other_foreman) { worker_roulette.foreman('other_foreman') }
+        other_foreman = worker_roulette.foreman('other_foreman')
 
         other_foreman.enqueue_work_order('foo') do
           foreman.enqueue_work_order(work_orders.other) do
@@ -75,7 +81,7 @@ module WorkerRoulette
       end
 
       it "counter_key increases by one only for first introduction of foreman to job board" do
-        let(:other_foreman) { worker_roulette.foreman('other_foreman') }
+        other_foreman = worker_roulette.foreman('other_foreman')
 
         expect(redis.get(foreman.counter_key)).to be_nil
 
