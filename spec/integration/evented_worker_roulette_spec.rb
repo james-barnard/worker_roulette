@@ -68,11 +68,10 @@ module WorkerRoulette
           foreman.enqueue_work_order(work_orders, extra_headers) do
             tradesman.work_orders! do |work|
               expect(work).to eq([work_orders_with_headers])
-            done { foreman.shutdown }
+              done { foreman.shutdown }
             end
 
           end
-          foreman.shutdown
         end
       end
 
@@ -152,11 +151,10 @@ module WorkerRoulette
             expect(r).to eq([work_orders_with_headers])
             tradesman.work_orders! do |q|
               expect(q).to be_empty
-              done(0.2)
+              done(0.2) { foreman.shutdown }
             end
           end
         end
-        foreman.shutdown
       end
 
       it "takes the oldest sender off the job board (FIFO)" do

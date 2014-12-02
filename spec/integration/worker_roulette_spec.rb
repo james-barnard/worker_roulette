@@ -28,7 +28,7 @@ module WorkerRoulette
 
     context Foreman do
       let(:foreman) {worker_roulette.foreman(sender)}
-      let(:other_forman) { worker_roulette.foreman('other_forman') }
+      let(:other_foreman) { worker_roulette.foreman('other_foreman') }
 
       it "works on behalf of a sender" do
         expect(foreman.sender).to eq(sender)
@@ -59,8 +59,8 @@ module WorkerRoulette
 
       xit "posts the sender's id to the job board with an order number" do
         foreman.enqueue_work_order(work_orders.first)
-        worker_roulette.foreman('other_forman').enqueue_work_order(work_orders.last)
-        expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([[sender, 1.0], ["other_forman", 2.0]])
+        worker_roulette.foreman('other_foreman').enqueue_work_order(work_orders.last)
+        expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([[sender, 1.0], ["other_foreman", 2.0]])
       end
 
       it "counter_key increases by one only for first introduction of foreman to job board" do
@@ -69,8 +69,8 @@ module WorkerRoulette
         expect(redis.get(foreman.counter_key)).to eq("1")
         foreman.enqueue_work_order(work_orders.last)
         expect(redis.get(foreman.counter_key)).to eq("1")
-        other_forman.enqueue_work_order(work_orders.last)
-        expect(redis.get(other_forman.counter_key)).to eq("2")
+        other_foreman.enqueue_work_order(work_orders.last)
+        expect(redis.get(other_foreman.counter_key)).to eq("2")
 
         foreman.shutdown
         other_foreman.shutdown
@@ -107,8 +107,8 @@ module WorkerRoulette
 
           tradesman.work_orders!
           expect(redis.keys("L*:*").length).to eq(0)
+          most_recent_foreman.shutdown
         end
-        most_recent_foreman.shutdown
       end
 
       it "has a last sender if it found messages" do
@@ -193,15 +193,15 @@ module WorkerRoulette
         end
 
       end
+    end
 
-      context "Concurrent Access" do
-        it "pools its connections" do
-          Array.new(100) do
-            Thread.new {worker_roulette.tradesman_connection_pool.with {|pooled_redis| pooled_redis.get("foo")}}
-          end.each(&:join)
-          worker_roulette.tradesman_connection_pool.with do |pooled_redis|
-            expect(pooled_redis.info["connected_clients"].to_i).to be > (worker_roulette.pool_size)
-          end
+    context "Concurrent Access" do
+      it "pools its connections" do
+        Array.new(100) do
+          Thread.new {worker_roulette.tradesman_connection_pool.with {|pooled_redis| pooled_redis.get("foo")}}
+        end.each(&:join)
+        worker_roulette.tradesman_connection_pool.with do |pooled_redis|
+          expect(pooled_redis.info["connected_clients"].to_i).to be > (worker_roulette.pool_size)
         end
       end
     end
