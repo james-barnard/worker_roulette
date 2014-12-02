@@ -36,6 +36,7 @@ module WorkerRoulette
 
     def drop
       queue.unlink
+      queue.close
     end
 
     private
