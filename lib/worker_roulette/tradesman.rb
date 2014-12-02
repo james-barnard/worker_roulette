@@ -124,10 +124,10 @@ module WorkerRoulette
         sender_key      = results[0]
         @remaining_jobs = results[1]
         @last_sender    = sender_key
-        puts "lua returned sender: (#{sender_key})"
+        puts "lua returned sender: (#{sender_key.inspect})"
         work            = fetch_work_from_queue(sender_key)
         work = work.map { |work_order| WorkerRoulette.load(work_order) }
-        callback.call work if work.any? && callback
+        callback.call work if callback
         work
       end
     end

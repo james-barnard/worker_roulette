@@ -5,64 +5,73 @@ module WorkerRoulette
 
     let(:sender) { 'katie_80' }
     let(:work_orders) { ["hello", "foreman"] }
-    let(:default_headers) { Hash['headers' => { 'sender' => sender }] }
+    let(:default_headers) { { 'sender' => sender } }
+    let(:extra_headers) { {} }
+    let(:all_the_headers) { default_headers.merge(extra_headers) }
     let(:hello_work_order) { Hash['payload' => "hello"] }
     let(:foreman_work_order) { Hash['payload' => "foreman"] }
-    let(:work_orders_with_headers) { default_headers.merge({ 'payload' => work_orders }) }
-    let(:jsonized_work_orders_with_headers) { [WorkerRoulette.dump(work_orders_with_headers)] }
+    let(:work_orders_with_headers) { { 'headers' => all_the_headers, 'payload' => work_orders } }
     let(:worker_roulette) {  WorkerRoulette.start(evented: true)  }
     let(:redis) { Redis.new(worker_roulette.redis_config) }
 
     before do
       redis.flushall
+      NexiaMessageQueue.new("bad_channel:foreman").drain
+      NexiaMessageQueue.new("good_channel:foreman").drain
       NexiaMessageQueue.new("new_job_ready:katie_80").drain
       NexiaMessageQueue.new("new_job_ready:foreman").drain
+      NexiaMessageQueue.new("new_job_ready:recent_sender").drain
+      NexiaMessageQueue.new("new_job_ready:other_foreman").drain
+      NexiaMessageQueue.new("good_channel:good_foreman").drain
+      NexiaMessageQueue.new("good_channel:lazy_foreman").drain
     end
 
     context "Evented Foreman" do
       subject(:foreman) { worker_roulette.foreman(sender) }
       let(:tradesman)   { worker_roulette.tradesman(nil, 0.01) }
 
+      it "enqueues an array of work_orders with default headers in the sender's slot in the job board" do
+        foreman.enqueue_work_order(work_orders) do
+          tradesman.work_orders! do |work|
+            expect(work).to eq([work_orders_with_headers])
+          done
+          end
+        end
+      end
+
       it "calls the block given when enqueue_work_order succeeds" do
         called = false
         foreman = worker_roulette.foreman('foreman')
         foreman.enqueue_work_order('some old fashion work') do |redis_response, stuff|
           called = true
-        end
-
         done(0.1) { expect(called).to be_truthy }
+        end
+        
+      NexiaMessageQueue.new("new_job_ready:foreman").drain
+
       end
 
-      it "enqueues an array of work_orders without headers in the sender's slot in the job board" do
+      xit "enqueues an array of work_orders without headers in the sender's slot in the job board" do
         foreman.enqueue_work_order_without_headers(work_orders) do
           tradesman.work_orders! do |work|
             expect(work).to eq([WorkerRoulette.dump(work_orders)])
+          done
           end
 
-          done
         end
       end
 
-      it "enqueues an array of work_orders with default headers in the sender's slot in the job board" do
-        foreman.enqueue_work_order(work_orders) do
-          tradesman.work_orders! do |work|
-            expect(work).to eq(jsonized_work_orders_with_headers)
+      context "with additional headers" do
+        let(:extra_headers) { {'foo' => 'bars'} }
+
+        it "enqueues an array of work_orders with additional headers in the sender's slot in the job board" do
+          foreman.enqueue_work_order(work_orders, extra_headers) do
+            tradesman.work_orders! do |work|
+              expect(work).to eq([work_orders_with_headers])
+            done
+            end
+
           end
-
-          done
-        end
-      end
-
-      it "enqueues an array of work_orders with additional headers in the sender's slot in the job board" do
-        extra_headers = {'foo' => 'bars'}
-        work_orders_with_headers['headers'].merge!(extra_headers)
-
-        foreman.enqueue_work_order(work_orders, extra_headers) do
-          tradesman.work_orders! do |work|
-            expect(work).to eq([WorkerRoulette.dump(work_orders_with_headers)])
-          end
-
-          done
         end
       end
 
@@ -70,9 +79,9 @@ module WorkerRoulette
         other_foreman = worker_roulette.foreman('other_foreman')
 
         other_foreman.enqueue_work_order('foo') do
-          foreman.enqueue_work_order(work_orders.other) do
+          foreman.enqueue_work_order(work_orders.first) do
             foreman.enqueue_work_order(work_orders.last) do
-              expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([["other_foreman", 1.0], ["#{sender}", 2.0]])
+              expect(redis.zrange(foreman.job_board_key, 0, -1, with_scores: true)).to eq([["new_job_ready:other_foreman", 1.0], ["new_job_ready:#{sender}", 2.0]])
 
               done
             end
@@ -85,7 +94,7 @@ module WorkerRoulette
 
         expect(redis.get(foreman.counter_key)).to be_nil
 
-        other_foreman.enqueue_work_order(work_orders.other) do
+        other_foreman.enqueue_work_order(work_orders.first) do
           expect(redis.get(foreman.counter_key)).to eq("1")
           other_foreman.enqueue_work_order(work_orders.last) do
             expect(redis.get(foreman.counter_key)).to eq("1")
@@ -138,8 +147,9 @@ module WorkerRoulette
         foreman.enqueue_work_order(work_orders) do
           tradesman.work_orders! do |r|
             expect(r).to eq([work_orders_with_headers])
-            tradesman.work_orders! do |p| expect(p).to be_empty
-              tradesman.work_orders! {|q| expect(q).to be_empty; done} #does not throw an error if queue is alreay empty
+            tradesman.work_orders! do |q|
+              expect(q).to be_empty
+              done(0.2)
             end
           end
         end
