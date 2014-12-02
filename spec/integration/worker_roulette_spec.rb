@@ -90,12 +90,12 @@ module WorkerRoulette
           expect(redis.keys("L*:*").length).to eq(0)
 
           tradesman.work_orders!
-          expect(redis.get("L*:katie_80")).to eq("1")
+          expect(redis.get("L*:new_job_ready:katie_80")).to eq("1")
           expect(redis.keys("L*:*").length).to eq(1)
 
           tradesman.work_orders!
           expect(redis.keys("L*:*").length).to eq(1)
-          expect(redis.get("L*:most_recent_sender")).to eq("1")
+          expect(redis.get("L*:new_job_ready:most_recent_sender")).to eq("1")
 
           tradesman.work_orders!
           expect(redis.keys("L*:*").length).to eq(0)
@@ -127,8 +127,8 @@ module WorkerRoulette
       end
 
       it "takes the oldest sender off the job board (FIFO)" do
-        oldest_sender = sender.to_s
-        most_recent_sender = 'most_recent_sender'
+        oldest_sender = "new_job_ready:katie_80"
+        most_recent_sender = 'new_job_ready:most_recent_sender'
         most_recent_foreman = worker_roulette.foreman(most_recent_sender)
         most_recent_foreman.enqueue_work_order(work_orders)
         expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([oldest_sender, most_recent_sender])
@@ -157,7 +157,7 @@ module WorkerRoulette
         tradesman.wait_for_work_orders do |work|
           expect(work.to_s).to match("good_name_space:old fashion work")
           expect(work.to_s).not_to match("bad_namespace:evil biddings")
-          expect(tradesman.last_sender).to eq('foreman')
+          expect(tradesman.last_sender).to eq('good_name_space:foreman')
           allow(tradesman).to receive(:wait_for_work_orders)
         end
       end
@@ -169,8 +169,8 @@ module WorkerRoulette
           allow(tradesman).to receive(:wait_for_work_orders)
         end
 
-        expect(tradesman.lua).to receive(:call).with(Tradesman::LUA_DRAIN_WORK_ORDERS_FOR_SENDER, [instance_of(String), sender])
         tradesman.get_more_work_for_last_sender do |redis_work_orders|
+        expect(tradesman.lua).to receive(:call).with(Tradesman::LUA_DRAIN_WORK_ORDERS_FOR_SENDER, [instance_of(String), sender])
           expect(redis_work_orders).to eq([])
         end
 
