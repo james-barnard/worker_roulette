@@ -129,7 +129,7 @@ module WorkerRoulette
       it "takes the oldest sender off the job board (FIFO)" do
         oldest_sender = "new_job_ready:katie_80"
         most_recent_sender = 'new_job_ready:most_recent_sender'
-        most_recent_foreman = worker_roulette.foreman(most_recent_sender)
+        most_recent_foreman = worker_roulette.foreman(most_recent_sender.split(":").last)
         most_recent_foreman.enqueue_work_order(work_orders)
         expect(redis.zrange(tradesman.job_board_key, 0, -1)).to eq([oldest_sender, most_recent_sender])
         tradesman.work_orders!
@@ -151,14 +151,14 @@ module WorkerRoulette
         good_foreman      = worker_roulette.foreman('foreman', 'good_namespace')
         bad_foreman       = worker_roulette.foreman('foreman', 'bad_namespace')
 
-        good_foreman.enqueue_work_order('good_name_space:old fashion work')
-        bad_foreman.enqueue_work_order('bad_namespace:evil biddings')
+        good_foreman.enqueue_work_order('old fashion work')
+        bad_foreman.enqueue_work_order('evil biddings')
 
-        tradesman.wait_for_work_orders do |work|
-          expect(work.to_s).to match("good_name_space:old fashion work")
-          expect(work.to_s).not_to match("bad_namespace:evil biddings")
-          expect(tradesman.last_sender).to eq('good_name_space:foreman')
-          allow(tradesman).to receive(:wait_for_work_orders)
+        tradesman.work_orders! do |work|
+          expect(work.first["payload"]).to match("old fashion work")
+          expect(work.first["payload"]).not_to match("evil biddings")
+          expect(tradesman.last_sender).to eq('good_namespace:foreman')
+          allow(tradesman).to receive(:work_orders!)
         end
       end
 
