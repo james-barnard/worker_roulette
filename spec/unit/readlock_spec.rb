@@ -40,13 +40,13 @@ module WorkerRoulette
     it "should read from the first available queue that is not locked" do
        foreman.enqueue_work_order(work_orders)     #locked
        number_two.enqueue_work_order(work_orders)  #unlocked
-       expect(subject_two.work_orders!.first['headers']['sender']).to eq('new_job_ready:number_two')
+       expect(subject_two.work_orders!.first['headers']['sender']).to eq('number_two')
     end
 
     it "should release its previous lock when it asks for work from another sender" do
       number_two.enqueue_work_order(work_orders)    #unlocked
-      expect(subject.last_sender).to eq(sender)
-      expect(subject.work_orders!.first['headers']['sender']).to eq('new_job_ready:number_two')
+      expect(subject.last_sender).to eq(sender_key)
+      expect(subject.work_orders!.first['headers']['sender']).to eq('number_two')
       expect(redis.get(lock_key)).to be_nil
     end
 
