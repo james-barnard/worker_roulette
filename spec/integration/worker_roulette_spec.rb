@@ -19,6 +19,7 @@ module WorkerRoulette
     before do
       redis.flushall
       NexiaMessageQueue.new(sender_key).drain
+      NexiaMessageQueue.new("new_job_ready:foreman").drain
     end
 
     it "exists" do
