@@ -41,7 +41,7 @@ module WorkerRoulette
     private
 
     def queue
-      @queue ||= POSIX::Mqueue.new("/#{@sender_key}", msgsize: 10, maxmsg: 4096)
+      @queue ||= POSIX::Mqueue.new("/#{@sender_key}", msgsize: 4096, maxmsg: 10)
     end
 
   end

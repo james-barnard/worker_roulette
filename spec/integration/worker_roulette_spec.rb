@@ -139,7 +139,7 @@ module WorkerRoulette
       it "gets the work_orders from the next queue when a new job is ready, then poll for new work" do
         tradesman.wait_for_work_orders do |redis_work_orders|
           expect(redis_work_orders).to eq([work_orders_with_headers])
-          expect(tradesman.last_sender).to eq('katie_80')
+          expect(tradesman.last_sender).to eq('new_job_ready:katie_80')
           allow(tradesman).to receive(:wait_for_work_orders)
         end
       end
@@ -151,12 +151,12 @@ module WorkerRoulette
         good_foreman      = worker_roulette.foreman('foreman', 'good_namespace')
         bad_foreman       = worker_roulette.foreman('foreman', 'bad_namespace')
 
-        good_foreman.enqueue_work_order('old fashion work')
-        bad_foreman.enqueue_work_order('evil biddings')
+        good_foreman.enqueue_work_order('good_name_space:old fashion work')
+        bad_foreman.enqueue_work_order('bad_namespace:evil biddings')
 
         tradesman.wait_for_work_orders do |work|
-          expect(work.to_s).to match("old fashion work")
-          expect(work.to_s).not_to match("evil biddings")
+          expect(work.to_s).to match("good_name_space:old fashion work")
+          expect(work.to_s).not_to match("bad_namespace:evil biddings")
           expect(tradesman.last_sender).to eq('foreman')
           allow(tradesman).to receive(:wait_for_work_orders)
         end
@@ -165,7 +165,7 @@ module WorkerRoulette
       xit "goes back to the channel to get more work for the same sender" do
         tradesman.wait_for_work_orders do |redis_work_orders|
           expect(redis_work_orders).to eq([work_orders_with_headers])
-          expect(tradesman.last_sender).to eq('katie_80')
+          expect(tradesman.last_sender).to eq('new_job_ready:katie_80')
           allow(tradesman).to receive(:wait_for_work_orders)
         end
 
