@@ -105,6 +105,7 @@ module WorkerRoulette
       @namespace      = namespace || WorkerRoulette::JOB_NOTIFICATIONS
       @lua            = Lua.new(@redis_pool)
       @remaining_jobs = 0
+      @last_sender    = ""
     end
 
     def wait_for_work_orders(&on_message_callback)
@@ -120,6 +121,7 @@ module WorkerRoulette
     end
 
     def work_orders!(&callback)
+puts "last_sender: #{@last_sender.inspect}"
       @lua.call(LUA_DRAIN_WORK_ORDERS, [job_board_key, @last_sender], [nil]) do |results|
         sender_key      = results[0]
         @remaining_jobs = results[1]

@@ -35,12 +35,14 @@ module WorkerRoulette
     it "should not read a locked queue" do
       foreman.enqueue_work_order(work_orders)    #locked
       expect(subject_two.work_orders!).to be_empty
+      expect(subject.work_orders!).to eq([work_orders_with_headers])
     end
 
     it "should read from the first available queue that is not locked" do
-       foreman.enqueue_work_order(work_orders)     #locked
-       number_two.enqueue_work_order(work_orders)  #unlocked
-       expect(subject_two.work_orders!.first['headers']['sender']).to eq('number_two')
+      foreman.enqueue_work_order(work_orders)     #locked
+      number_two.enqueue_work_order(work_orders)  #unlocked
+      expect(subject_two.work_orders!.first['headers']['sender']).to eq('number_two')
+      expect(subject.work_orders!).to eq([work_orders_with_headers])
     end
 
     it "should release its previous lock when it asks for work from another sender" do

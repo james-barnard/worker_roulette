@@ -17,7 +17,7 @@ module WorkerRoulette
 
     def drain
       messages = fetch_all
-      drop
+      close
 
       messages
     end
@@ -32,11 +32,6 @@ module WorkerRoulette
         end
       end
       messages
-    end
-
-    def drop
-      queue.unlink
-      close
     end
 
     def close
