@@ -27,7 +27,7 @@ module WorkerRoulette
     def eval(redis, lua_script, keys_accessed, args, &callback)
       results = redis.eval(lua_script, keys_accessed.length, *keys_accessed, *args)
       results.callback(&callback) if callback
-      results.errback  {|err_msg| raise EM::Hiredis::RedisError.new(err_msg)}
+      results.errback  {|err_msg| byebug; raise EM::Hiredis::RedisError.new(err_msg)}
     end
 
     def evalsha(redis, lua_script, keys_accessed, args, &callback)
